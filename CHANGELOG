@@ -1,0 +1,4 @@
+2003-04-25  Daniel Silverman  <zeno@agblog.com>
+	* As I finally package the system for release, it is no longer running at my institution.  I never did get around to fixing the alternate download link, so while it does everything right, it doesn't actually do a download.  Patches welcomed, as I don't currently have the inclination to fix it.  Everything else should work as expected, the only weirdness potential coming from MySQL 4, which has a few quirks.
+	* HINT: For much better search results, set the minimum word length for MySQL FULLTEXT search to 2 or 3 characters.  The slowdown isn't terrible for the benefits in searching.
+	* TODO: Write a tutorial for MySQL 4 FULLTEXT IN BOOLEAN MODE searching.

@@ -1,0 +1,36 @@
+#!/usr/bin/php -q
+<?php
+require("../config.inc.php");
+require("../includes/subnets.inc.php");
+global $subnets;
+global $link_id;
+$name = $argv['1'];
+if($name == "")
+	die("Usage: ping-subnet <subnet-name>
+Subnet name corresponds to a subnet listed in the subnets.inc.php file\n");
+$stuff = $subnets[$name];
+
+$subnet = $stuff['0'];
+print "Starting subnet $subnet...\n";
+
+$result = mysql_query("SELECT id, ip FROM hosts WHERE ip LIKE '$subnet%'", $link_id);
+if($result)
+	$count = mysql_num_rows($result);
+if(!$count) die("No hosts to scan in this subnet ($subnet).\n");
+
+$query = "";
+
+for($i = 1; $i <= $count; $i++) {
+	$host = mysql_fetch_array($result);
+	$ip = $host['ip'];
+	$id = $host['id'];
+	exec("/bin/ping -c 1 $ip 2>&1", $results, $error);
+	if($error == "0") {
+		print "+";
+		mysql_query("UPDATE hosts SET isup=1 WHERE id='$id'", $link_id);
+	} else {
+		print "-";
+		mysql_query("UPDATE hosts SET isup=0 WHERE id='$id'", $link_id);
+	}
+}
+?>

@@ -1,0 +1,21 @@
+#!/usr/bin/php -q
+<?php
+require("../config.inc.php");
+require("../includes/subnets.inc.php");
+global $subnets;
+global $link_id;
+
+# Check to see if this script is already running
+$numthis = trim(exec("ps -au `whoami` | grep net-ping | wc -l"));
+if($numthis > 1)
+	die("This script is already running in another instance.\n");
+
+foreach($subnets as $key => $value) {
+	$numprocs = trim(exec("ps -au `whoami` | grep subnet-ping | wc -l"));
+	while($numprocs >= BS_MAX_PROC) {
+		sleep(15);
+		$numprocs = trim(exec("ps -au `whoami` | grep subnet-ping | wc -l"));
+	}
+	exec("./subnet-ping $key > /dev/null &");
+}
+?>

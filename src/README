@@ -1,0 +1,24 @@
+The smbclient patch was contribued by Karl Gutwin and applies successfully against Samba 2.2.4 and probably should work fine on most other Samba versions.  It changes source/client/client.c to make a cleaner and MUCH easier to parse output, like this:
+
+\Elliot Smith
+@ 16:         0:Sat Dec  9 01:21:20 2000:.
+@ 16:         0:Sat Dec  9 01:21:20 2000:..
+@ 32:   2798047:Fri Dec  8 12:37:46 2000:Elliot Smith - Because (American Beauty).mp3
+@ 32:   2826788:Fri Dec  8 12:41:04 2000:Elliot Smith - Bottle Up And Explode.mp3
+@ 32:   3070082:Fri Dec  8 12:35:20 2000:Elliot Smith - Miss Misery.mp3
+
+^ ^       ^           ^                   ^
+| |       |           |                   |_ Filename (from col 41 to \n)
+| |       |           |_ Date (cols 16-39)
+| |       |_ Filesize (cols 5-14). 10 digits for a max size ~ 10TB 
+| |_ File Mode - bitfield described below (cols 1-3)
+|_ indicates that this line describes a file. No other line should begin 
+   with this sign, so it is a quick test.
+
+File mode bitfield (from source/include/smb.h):
+0x01: Readonly
+0x02: Hidden
+0x04: System
+0x08: Volid (?)
+0x10: Directory
+0x20: Archive

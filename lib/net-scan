@@ -1,0 +1,17 @@
+#!/usr/bin/php -q
+<?php
+require("../config.inc.php");
+require("../includes/subnets.inc.php");
+global $subnets;
+global $link_id;
+
+foreach($subnets as $key => $value) {
+	# This thing is not foolproof but it works pretty well
+	$numprocs = trim(exec("ps -au `whoami` | grep subnet-scan | wc -l"));
+	while($numprocs >= BS_MAX_PROC) {
+		sleep(30);
+		$numprocs = trim(exec("ps -au `whoami` | grep subnet-scan | wc -l"));
+	}
+	exec("./subnet-scan $key > /dev/null &");
+}
+?>

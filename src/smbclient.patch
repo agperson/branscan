@@ -1,0 +1,18 @@
+--- client-old.c	Wed Jan 29 23:55:53 2003
++++ client.c	Thu Jan 30 00:00:15 2003
+@@ -324,11 +324,11 @@
+ {
+ 	if (do_this_one(finfo)) {
+ 		time_t t = finfo->mtime; /* the time is assumed to be passed as GMT */
+-		DEBUG(0,("  %-30s%7.7s %8.0f  %s",
+-			 finfo->name,
+-			 attrib_string(finfo->mode),
++		DEBUG(0,("@%3d:%10.0f:%24.24s:%s\n",
++			 finfo->mode,
+ 			 (double)finfo->size,
+-			 asctime(LocalTime(&t))));
++			 asctime(LocalTime(&t)),
++			 finfo->name));
+ 		dir_total += finfo->size;
+ 	}
+ }

@@ -1,0 +1,104 @@
+#!/usr/bin/php -q
+<?php
+require("../config.inc.php");
+
+global $types, $link_id;
+$host_id = $argv['1'];
+if($host_id == "")
+	die("Usage: crawl-comp <host_id>
+Host ID corresponds to a host in the BranScan hosts table\n");
+
+# First get all of the types -- if a file isn't in this set, don't catalog it
+# (This helps us avoid files with types of COM, BAT, and the like)
+$ttypes = array();
+foreach($types as $subarr)
+	$ttypes = array_merge($subarr, $ttypes);
+
+# Get host information based on the host id given
+$hsql = mysql_query("SELECT name, ip FROM hosts WHERE id='$host_id'", $link_id);
+$hreturn = mysql_fetch_array($hsql);
+$host = $hreturn['name'];
+$ip = $hreturn['ip'];
+if($host == "" || $ip == "")
+	die("Could not find host/ip under that host_id\n");
+
+# Delete catalogued files so we can start fresh
+mysql_query("DELETE FROM files WHERE host_id='$host_id'", $link_id);
+mysql_query("UPDATE hosts SET lastscan=NOW(), files=0, size=0 where id='$host_id'", $link_id);
+
+# Determine if the computer is up before continuing
+exec("/usr/bin/nmblookup -A " . trim($ip), $result);
+if(!strpos($result['1'], $host)) die("Host $host cannot be reached.\n");
+
+# Get our list of shares
+$shares = share_list($host);
+if(!$shares)
+	die("No shares found for host $host.\n");
+
+# For each share we've found, catalogue it and add the results to the database
+foreach($shares as $oneshare) {
+	if($oneshare != false && substr($oneshare, -1, 1) != "$" && $oneshare != "C") {
+		print "Cataloguing $oneshare...\n";
+		$file_list = catalog("//$host/" . $oneshare);
+		$file_count = 0;
+		$query = "";
+		if(!$file_list) continue;
+
+		foreach($file_list as $one_file) {
+			$file_count++;
+			$path = mysql_escape_string(substr($one_file['2'], 2));
+			$size = $one_file['1'];
+			$name = mysql_escape_string($one_file['0']);
+			$type = substr($name, -3, 3);
+			if($type['0'] == ".")
+				$type = $type['1'] . $type['2'];
+			if(!array_search($type, $ttypes)) continue;
+			
+			if($file_count % 1000 == 0) {
+				mysql_query("INSERT INTO files (host_id, path, file_name, file_size, file_type) VALUES$query('$host_id', '$path', '$name', '$size', '$type')", $link_id);
+				$query = "";
+			} else {
+				$query .= "('$host_id', '$path', '$name', '$size', '$type'), ";
+			}
+		}
+		$query = substr($query, 0, -2);
+		mysql_query("INSERT INTO files (host_id, path, file_name, file_size, file_type) VALUES$query", $link_id);
+	}
+}
+
+if($result = mysql_fetch_array(mysql_query("SELECT count(id) as num, sum(file_size) as size FROM files WHERE host_id=$host_id", $link_id)))
+	mysql_query("UPDATE hosts SET files='{$result['num']}', size='{$result['size']}' WHERE id='$host_id'", $link_id);
+
+function share_list($host) {
+	exec("smbclient -s \"/etc/samba/smb.conf\" -L \"//$host\" -N", $result);
+	foreach($result as $line) {
+		$share_check = split("[[:space:]]{2,}", trim($line));
+		if($share_check['1'] == "Disk")
+			$share[] = $share_check['0'];
+	}
+	return $share;
+}
+
+function catalog($url) {
+	exec("smbclient \"$url\" -N -c \"recurse; ls\" -s \"/etc/samba/smb.conf\"", $return);
+	$path = $url;
+	foreach($return as $line) {
+		if($line['0'] != "\\" && $line['0'] != "@") continue;
+		
+		# Set the path
+		if($line['0'] == "\\") {
+			$path = $url . ereg_replace("\\\\", "/", $line);
+			continue;
+		}
+		# Or it is a file.
+		$size = substr($line, 5, 10);
+		$name = substr($line, 41);
+		
+		if($name['0'] == ".") continue;
+		if($name == "robots.txt") return;
+		$files[] = array($name, $size, $path);
+	}	
+	
+	return $files;
+}
+?>

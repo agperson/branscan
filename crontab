@@ -1,0 +1,8 @@
+# Look for new computers
+0 0 * * * /var/www/branscan/lib/net-scan > /dev/null
+# Check if computers are up
+* */2 * * * /var/www/branscan/lib/net-ping > /dev/null
+# Scan computers past time limit
+40 * * * * /var/www/branscan/lib/scheduled-scan > /dev/null
+# Update site statistics
+28,58 * * * * /var/www/branscan/lib/update-stats > /dev/null
